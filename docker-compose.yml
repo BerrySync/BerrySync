@@ -1,0 +1,19 @@
+version: '3.4'
+
+services:
+  berrysync.api:
+    container_name: BerrySync.API
+    image: ${DOCKER_REGISTRY-}berrysyncapi
+    build:
+      context: .
+      dockerfile: BerrySync.API/Dockerfile
+    volumes:
+      # - <path to key.json>:/data/key.json
+      - berrysync.db:/data/db
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/data/key.json
+      - GOOGLE_CALENDAR_ID= # Google Calendar ID
+
+volumes:
+  berrysync.db:
+    name: BerrySync.DB
