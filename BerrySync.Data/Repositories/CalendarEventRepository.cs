@@ -16,106 +16,130 @@ namespace BerrySync.Data.Repositories
 
         public async Task<bool> AddCalendarEventAsync(CalendarEvent calendarEvent)
         {
-            using (var db = _sp.GetRequiredService<FlavorDbContext>())
+            using (var scope = _sp.CreateScope())
             {
-
-                if (await DbContainsDate(calendarEvent))
+                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
                 {
-                    return false;
+                    if (await DbContainsDate(calendarEvent))
+                    {
+                        return false;
+                    }
+                    await db.CalendarEvents.AddAsync(calendarEvent);
+                    await db.SaveChangesAsync();
+                    return true;
                 }
-                await db.CalendarEvents.AddAsync(calendarEvent);
-                await db.SaveChangesAsync();
-                return true;
             }
         }
 
         public async Task<bool> AddCalendarEventRangeAsync(IEnumerable<CalendarEvent> calendarEvents)
         {
-            using (var db = _sp.GetRequiredService<FlavorDbContext>())
+            using (var scope = _sp.CreateScope())
             {
-
-                if (await db.CalendarEvents
-                .Select(x => x.Date)
-                .Intersect(calendarEvents
-                    .Select(x => x.Date))
-                .AnyAsync())
+                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
                 {
-                    return false;
-                }
+                    if (await db.CalendarEvents
+                        .Select(x => x.Date)
+                        .Intersect(calendarEvents
+                            .Select(x => x.Date))
+                        .AnyAsync())
+                    {
+                        return false;
+                    }
 
-                await db.CalendarEvents.AddRangeAsync(calendarEvents);
-                await db.SaveChangesAsync();
-                return true;
+                    await db.CalendarEvents.AddRangeAsync(calendarEvents);
+                    await db.SaveChangesAsync();
+                    return true;
+                }
             }
         }
 
         public async Task<CalendarEvent> GetCalendarEventAsync(DateTime dateTime)
         {
-            using (var db = _sp.GetRequiredService<FlavorDbContext>())
+            using (var scope = _sp.CreateScope())
             {
-                return await db.CalendarEvents
-                .FirstOrDefaultAsync(x => x.Date == dateTime);
+                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
+                {
+                    return await db.CalendarEvents
+                        .Include(x => x.FlavorOfTheDay)
+                        .FirstOrDefaultAsync(x => x.Date == dateTime);
+                }
             }
         }
 
         public async Task<IEnumerable<CalendarEvent>> GetCalendarEventRangeAsync(DateTime start, DateTime end)
         {
-            using (var db = _sp.GetRequiredService<FlavorDbContext>())
+            using (var scope = _sp.CreateScope())
             {
-                return await db.CalendarEvents
-                .Where(x => x.Date >= start && x.Date <= end)
-                .ToListAsync();
+                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
+                {
+                    return await db.CalendarEvents
+                        .Include(x => x.FlavorOfTheDay)
+                        .Where(x => x.Date >= start && x.Date <= end)
+                        .ToListAsync();
+                }
             }
         }
 
         public async Task<bool> ModifyCalenderEventAsync(CalendarEvent calendarEvent)
         {
-            using (var db = _sp.GetRequiredService<FlavorDbContext>())
+            using (var scope = _sp.CreateScope())
             {
-                if (!await DbContainsDate(calendarEvent))
+                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
                 {
-                    return false;
-                }
+                    if (!await DbContainsDate(calendarEvent))
+                    {
+                        return false;
+                    }
 
-                db.CalendarEvents.Update(calendarEvent);
-                await db.SaveChangesAsync();
-                return true;
+                    db.CalendarEvents.Update(calendarEvent);
+                    await db.SaveChangesAsync();
+                    return true;
+                }
             }
         }
 
         public async Task<bool> RemoveCalendarEventAsync(DateTime dateTime)
         {
-            using (var db = _sp.GetRequiredService<FlavorDbContext>())
+            using (var scope = _sp.CreateScope())
             {
-                var calendarEvent = await GetCalendarEventAsync(dateTime);
-
-                if (calendarEvent is null)
+                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
                 {
-                    return false;
-                }
+                    var calendarEvent = await GetCalendarEventAsync(dateTime);
 
-                db.CalendarEvents.Remove(calendarEvent);
-                await db.SaveChangesAsync();
-                return true;
+                    if (calendarEvent is null)
+                    {
+                        return false;
+                    }
+
+                    db.CalendarEvents.Remove(calendarEvent);
+                    await db.SaveChangesAsync();
+                    return true;
+                }
             }
         }
 
         public async Task RemoveCalendarEventRangeAsync(DateTime start, DateTime end)
         {
-            using (var db = _sp.GetRequiredService<FlavorDbContext>())
+            using (var scope = _sp.CreateScope())
             {
-                db.CalendarEvents.RemoveRange(await GetCalendarEventRangeAsync(start, end));
-                await db.SaveChangesAsync();
+                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
+                {
+                    db.CalendarEvents.RemoveRange(await GetCalendarEventRangeAsync(start, end));
+                    await db.SaveChangesAsync();
+                }
             }
         }
 
         private async Task<bool> DbContainsDate(CalendarEvent calendarEvent)
         {
-            using (var db = _sp.GetRequiredService<FlavorDbContext>())
+            using (var scope = _sp.CreateScope())
             {
-                return await db.CalendarEvents
-                .Select(x => x.Date)
-                .ContainsAsync(calendarEvent.Date);
+                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
+                {
+                    return await db.CalendarEvents
+                        .Select(x => x.Date)
+                        .ContainsAsync(calendarEvent.Date);
+                }
             }
         }
     }

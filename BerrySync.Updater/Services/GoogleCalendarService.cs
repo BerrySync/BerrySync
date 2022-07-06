@@ -1,4 +1,5 @@
 ﻿using BerrySync.Data.Models;
+using BerrySync.Data.Repositories;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
@@ -10,12 +11,17 @@ namespace BerrySync.Updater.Services
 {
     public class GoogleCalendarService : IGoogleCalendarService
     {
-        ILogger<GoogleCalendarService> _logger;
-        CalendarService _calendar;
+        private readonly ILogger<GoogleCalendarService> _logger;
+        private readonly IFlavorRepository _flavor;
+        private readonly ICalendarEventRepository _event;
+        private readonly CalendarService _calendar;
 
-        public GoogleCalendarService(ILogger<GoogleCalendarService> logger)
+        public GoogleCalendarService(ILogger<GoogleCalendarService> logger, IFlavorRepository flavor, ICalendarEventRepository events)
         {
             _logger = logger;
+            _flavor = flavor;
+            _event = events;
+
             using (var stream = new FileStream(Constants.GoogleAppSecretsFile, FileMode.Open, FileAccess.Read))
             {
                 string[] scopes = { CalendarService.Scope.CalendarEvents };
@@ -29,55 +35,49 @@ namespace BerrySync.Updater.Services
             }
         }
 
-        public async Task<IEnumerable<FlavorOfTheDay>> AddAsync(IEnumerable<FlavorOfTheDay> flavors)
+        public async Task AddAsync(IEnumerable<FlavorOfTheDay> flavors)
         {
             var datesOnly = flavors
                 .Select(r => r.Date);
-            var e = (await GetAsync(datesOnly.Min(), datesOnly.Max())).Items;
 
-            var allGoodList = flavors
-                .Where(f => e
-                    .Where(x => IsSameDay(f.Date, x.Start.Date)
-                        && x.Summary == f.Flavor)
-                    .Any());
-            var modifyList = flavors
-                .Where(f => e
-                    .Where(x => IsSameDay(f.Date, x.Start.Date)
-                        && x.Summary != f.Flavor)
-                    .Any());
-            var addList = flavors
-                .Except(allGoodList)
-                .Except(modifyList);
-
-            return (await UpdateAsync(modifyList, e))
-                .Union(await InsertAsync(addList));
-        }
-
-        public async Task<Events> GetAsync(DateTime start, DateTime end)
-        {
-            var req = _calendar.Events.List(Constants.GoogleCalendarId);
-            req.TimeMin = start;
-            req.TimeMax = end;
-            return await req.ExecuteAsync();
-        }
-
-        public async Task<IEnumerable<FlavorOfTheDay>> UpdateAsync(IEnumerable<FlavorOfTheDay> flavors, IList<Event> events)
-        {
-            var output = new List<FlavorOfTheDay>();
-
+            var modifyList = new List<FlavorOfTheDay>();
+            var addList = new List<FlavorOfTheDay>();
             foreach (var f in flavors)
             {
-                var eventId = events
-                    .Where(x => IsSameDay(f.Date, x.Start.Date))
-                    .Select(x => x.Id)
-                    .First();
-
-                var e = new Event
+                var result = await _flavor.GetFlavorOfTheDayAsync(f.Date);
+                if (result != null)
                 {
-                    Summary = f.Flavor
-                };
+                    var gEvent = await _calendar.Events.Get(Constants.GoogleCalendarId, result.Event.EventId).ExecuteAsync();
+                    if (f.Flavor != gEvent.Summary
+                        || !IsSameDay(result.Date, gEvent.Start.Date))
+                    {
+                        modifyList.Add(f);
+                    }
+                }
+                else
+                {
+                    addList.Add(f);
+                }
+            }
 
-                var req = _calendar.Events.Update(e, Constants.GoogleCalendarId, eventId);
+            await InsertAsync(addList);
+            await UpdateAsync(modifyList);
+        }
+
+        public async Task UpdateAsync(IEnumerable<FlavorOfTheDay> flavors)
+        {
+            foreach (var f in flavors)
+            {
+                var id = (await _event.GetCalendarEventAsync(f.Date)).EventId;
+
+                _logger.LogDebug($"Updating Google Calendar event {id}");
+
+                var e = await _calendar.Events.Get(Constants.GoogleCalendarId, id).ExecuteAsync();
+                e.Summary = f.Flavor;
+                e.Start.Date = FormatDate(f.Date);
+                e.End.Date = FormatDate(f.Date.AddDays(1));
+
+                var req = _calendar.Events.Update(e, Constants.GoogleCalendarId, id);
                 var response = await req.ExecuteAsync();
 
                 f.Event = new CalendarEvent
@@ -87,27 +87,26 @@ namespace BerrySync.Updater.Services
                     FlavorOfTheDay = f
                 };
 
-                output.Add(f);
+                await _flavor.ModifyFlavorOfTheDayAsync(f);
             }
 
-            return output;
         }
 
-        public async Task<IEnumerable<FlavorOfTheDay>> InsertAsync(IEnumerable<FlavorOfTheDay> flavors)
+        public async Task InsertAsync(IEnumerable<FlavorOfTheDay> flavors)
         {
-            var output = new List<FlavorOfTheDay>();
-
             foreach (var f in flavors)
             {
                 var e = new Event();
 
-                var start = new EventDateTime();
-                start.Date = FormatDate(f.Date);
-                e.Start = start;
+                e.Start = new EventDateTime()
+                {
+                    Date = FormatDate(f.Date)
+                };
 
-                var end = new EventDateTime();
-                end.Date = FormatDate(f.Date.AddDays(1));
-                e.End = end;
+                e.End = new EventDateTime()
+                {
+                    Date = FormatDate(f.Date.AddDays(1))
+                };
 
                 e.Summary = f.Flavor;
                 e.Visibility = "public";
@@ -116,6 +115,8 @@ namespace BerrySync.Updater.Services
                 var req = _calendar.Events.Insert(e, Constants.GoogleCalendarId);
                 var response = await req.ExecuteAsync();
 
+                _logger.LogDebug($"Adding Google Calendar event {response.Id}");
+
                 f.Event = new CalendarEvent()
                 {
                     Date = f.Date,
@@ -123,10 +124,8 @@ namespace BerrySync.Updater.Services
                     FlavorOfTheDay = f
                 };
 
-                output.Add(f);
+                await _flavor.AddFlavorOfTheDayAsync(f);
             }
-
-            return output;
         }
 
         public static bool IsSameDay(DateTime a, string b)

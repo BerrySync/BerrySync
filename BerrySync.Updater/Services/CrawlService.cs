@@ -23,7 +23,6 @@ namespace BerrySync.Updater.Services
         {
             var urls = GetImages();
             var dataRegex = new Regex("[a-zA-Z0-9]+", RegexOptions.Singleline);
-            _logger.LogInformation(String.Join("\n", urls));
             foreach (var url in urls)
             {
                 _logger.LogDebug($"Calendar URL found: {url}");
@@ -33,8 +32,7 @@ namespace BerrySync.Updater.Services
 
                 var matches = dataRegex.Matches(Path.GetFileName(new Uri(url).AbsolutePath));
                 var days = await _ocrService.StartOCRAsync(matches[0].Value, Int32.Parse(matches[1].Value));
-                days = await _calendarService.AddAsync(days);
-                // db stuff
+                await _calendarService.AddAsync(days);
 
                 Directory.Delete(Constants.WorkDir, true);
             }

@@ -2,7 +2,7 @@
 
 namespace BerrySync.Data.Repositories
 {
-    internal interface ICalendarEventRepository
+    public interface ICalendarEventRepository
     {
         public Task<bool> AddCalendarEventAsync(CalendarEvent calendarEvent);
         public Task<bool> AddCalendarEventRangeAsync(IEnumerable<CalendarEvent> calendarEvents);
