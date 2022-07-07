@@ -8,7 +8,7 @@ namespace BerrySync.Data
 {
     public static class DataExtensions
     {
-        public static IServiceCollection AddDataContext(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddDataContext(this IServiceCollection services)
         {
             services.AddDbContext<FlavorDbContext>();
             services.AddSingleton<IFlavorRepository, FlavorRepository>();

@@ -92,23 +92,7 @@ namespace BerrySync.Data.Repositories
                     return await db.Dates
                         .Include(x => x.Event)
                         .Where(x => x.Date >= start && x.Date <= end)
-                        .Where(x => x.Flavor == flavor)
-                        .Select(x => x.Date)
-                        .ToListAsync();
-                }
-            }
-        }
-
-        public async Task<IEnumerable<DateTime>> GetDaysWithFlavorAsync(DateTime start, string flavor)
-        {
-            using (var scope = _sp.CreateScope())
-            {
-                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
-                {
-                    return await db.Dates
-                        .Include(x => x.Event)
-                        .Where(x => x.Date >= start)
-                        .Where(x => x.Flavor == flavor)
+                        .Where(x => x.Flavor.ToLower() == flavor.ToLower())
                         .Select(x => x.Date)
                         .ToListAsync();
                 }
@@ -121,11 +105,14 @@ namespace BerrySync.Data.Repositories
             {
                 using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
                 {
-                    var nextDate = await db.Dates
+                    var next = await db.Dates
                         .Include(x => x.Event)
-                        .Where(x => x.Date >= DateTime.Today)
-                        .FirstOrDefaultAsync(x => x.Flavor == flavor);
-                    return nextDate?.Date;
+                        .Where(x => x.Flavor.ToLower() == flavor.ToLower())
+                        .Select(x => x.Date)
+                        .Where(x => x >= DateTime.Today)
+                        .OrderBy(x => x)
+                        .FirstOrDefaultAsync();
+                    return (next == default) ? null : next;
                 }
             }
         }
@@ -136,10 +123,14 @@ namespace BerrySync.Data.Repositories
             {
                 using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
                 {
+                    _logger.LogDebug(flavor);
                     return await db.Dates
                         .Include(x => x.Event)
+                        .Where(x => x.Flavor.ToLower() == flavor.ToLower())
                         .Select(x => x.Date)
                         .Where(x => x >= DateTime.Today)
+                        .OrderBy(x => x)
+                        .Take(5)
                         .ToListAsync();
                 }
             }

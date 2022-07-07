@@ -7,9 +7,9 @@ namespace BerrySync.Updater
 {
     public static class UpdaterExtensions
     {
-        public static IServiceCollection AddUpdater(this IServiceCollection services, IConfiguration configuration)
+        public static IServiceCollection AddUpdater(this IServiceCollection services)
         {
-            services.AddDataContext(configuration);
+            services.AddDataContext();
 
             services.AddHostedService<HostedCrawlService>();
             services.AddSingleton<ICrawlService, CrawlService>();
