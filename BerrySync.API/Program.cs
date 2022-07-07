@@ -1,13 +1,19 @@
 using BerrySync.Data;
 using BerrySync.Updater;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Host.ConfigureServices((hostingContext, services) =>
 {
-    services.AddDataContext(hostingContext.Configuration);
-    services.AddUpdater(hostingContext.Configuration);
+    services.AddDataContext();
+    services.AddUpdater();
 
-    services.AddControllers();
+    services.AddControllers()
+        .AddJsonOptions(o =>
+        {
+            o.JsonSerializerOptions
+                .ReferenceHandler = ReferenceHandler.Preserve;
+        });
 })
     .ConfigureLogging((hostingContext, logging) =>
     {
@@ -18,7 +24,7 @@ builder.Host.ConfigureServices((hostingContext, services) =>
 var app = builder.Build();
 
 app.SetupDb();
-app.UseHttpsRedirection();
+
 app.UseAuthorization();
 app.MapControllers();
 
