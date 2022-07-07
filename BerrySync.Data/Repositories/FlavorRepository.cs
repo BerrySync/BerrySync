@@ -123,6 +123,7 @@ namespace BerrySync.Data.Repositories
             {
                 using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
                 {
+                    _logger.LogDebug(flavor);
                     return await db.Dates
                         .Include(x => x.Event)
                         .Where(x => x.Flavor.ToLower() == flavor.ToLower())
