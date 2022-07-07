@@ -8,11 +8,13 @@ services:
       context: .
       dockerfile: BerrySync.API/Dockerfile
     volumes:
-      # - <path to key.json>:/data/key.json
+      #- path to key.json:/data/key.json
       - berrysync.db:/data/db
     environment:
       - GOOGLE_APPLICATION_CREDENTIALS=/data/key.json
       - GOOGLE_CALENDAR_ID= # Google Calendar ID
+    ports:
+      - 80
 
 volumes:
   berrysync.db:
