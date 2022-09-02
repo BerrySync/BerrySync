@@ -24,6 +24,7 @@ builder.Host.ConfigureServices((hostingContext, services) =>
 var app = builder.Build();
 
 app.SetupDb();
+app.CreateDirStructure();
 
 app.UseAuthorization();
 app.MapControllers();

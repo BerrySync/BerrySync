@@ -1,7 +1,6 @@
 ﻿using BerrySync.Data.Data;
 using BerrySync.Data.Repositories;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BerrySync.Data
@@ -13,6 +12,7 @@ namespace BerrySync.Data
             services.AddDbContext<FlavorDbContext>();
             services.AddSingleton<IFlavorRepository, FlavorRepository>();
             services.AddSingleton<ICalendarEventRepository, CalendarEventRepository>();
+            services.AddSingleton<ICalendarImageRepository, CalendarImageRepository>();
 
             return services;
         }

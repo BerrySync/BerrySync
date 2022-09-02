@@ -1,6 +1,6 @@
 using BerrySync.Data;
 using BerrySync.Updater.Services;
-using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BerrySync.Updater
@@ -14,10 +14,17 @@ namespace BerrySync.Updater
             services.AddHostedService<HostedCrawlService>();
             services.AddSingleton<ICrawlService, CrawlService>();
             services.AddSingleton<IImageService, ImageService>();
+            services.AddSingleton<IImageArchiveService, ImageArchiveService>();
             services.AddSingleton<IOCRService, OCRService>();
             services.AddSingleton<IGoogleCalendarService, GoogleCalendarService>();
 
             return services;
+        }
+
+        public static IApplicationBuilder CreateDirStructure(this IApplicationBuilder app)
+        {
+            Directory.CreateDirectory(Constants.CalendarStorage);
+            return app;
         }
     }
 }

@@ -11,6 +11,7 @@ namespace BerrySync.Data.Data
 
         public DbSet<FlavorOfTheDay> Dates { get; set; }
         public DbSet<CalendarEvent> CalendarEvents { get; set; }
+        public DbSet<CalendarImage> CalendarImages { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

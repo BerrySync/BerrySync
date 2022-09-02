@@ -20,7 +20,7 @@ namespace BerrySync.Data.Repositories
             {
                 using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
                 {
-                    if (await DbContainsDate(calendarEvent))
+                    if (await DbContainsDate(db, calendarEvent))
                     {
                         return false;
                     }
@@ -86,7 +86,7 @@ namespace BerrySync.Data.Repositories
             {
                 using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
                 {
-                    if (!await DbContainsDate(calendarEvent))
+                    if (!await DbContainsDate(db, calendarEvent))
                     {
                         return false;
                     }
@@ -130,17 +130,11 @@ namespace BerrySync.Data.Repositories
             }
         }
 
-        private async Task<bool> DbContainsDate(CalendarEvent calendarEvent)
+        private async Task<bool> DbContainsDate(FlavorDbContext db, CalendarEvent calendarEvent)
         {
-            using (var scope = _sp.CreateScope())
-            {
-                using (var db = scope.ServiceProvider.GetRequiredService<FlavorDbContext>())
-                {
-                    return await db.CalendarEvents
-                        .Select(x => x.Date)
-                        .ContainsAsync(calendarEvent.Date);
-                }
-            }
+            return await db.CalendarEvents
+                .Select(x => x.Date)
+                .ContainsAsync(calendarEvent.Date);
         }
     }
 }
