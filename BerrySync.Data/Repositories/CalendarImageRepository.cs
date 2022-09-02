@@ -47,7 +47,7 @@ namespace BerrySync.Data.Repositories
         {
             return await db.CalendarImages
                 .Where(i => i.Year == year
-                    && i.Month == month)
+                    && i.Month.ToLower() == month.ToLower())
                 .FirstOrDefaultAsync();
         }
     }
