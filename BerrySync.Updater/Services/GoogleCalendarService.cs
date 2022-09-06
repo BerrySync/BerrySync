@@ -4,7 +4,6 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Calendar.v3;
 using Google.Apis.Calendar.v3.Data;
 using Google.Apis.Services;
-using Google.Apis.Util.Store;
 using Microsoft.Extensions.Logging;
 
 namespace BerrySync.Updater.Services
@@ -37,106 +36,76 @@ namespace BerrySync.Updater.Services
 
         public async Task AddAsync(IEnumerable<FlavorOfTheDay> flavors)
         {
-            var datesOnly = flavors
-                .Select(r => r.Date);
-
-            var modifyList = new List<FlavorOfTheDay>();
-            var addList = new List<FlavorOfTheDay>();
             foreach (var f in flavors)
             {
-                var result = await _flavor.GetFlavorOfTheDayAsync(f.Date);
-                if (result != null)
+                var e = await _event.GetCalendarEventAsync(f.Date);
+
+                if (e is null)
                 {
-                    var gEvent = await _calendar.Events.Get(Constants.GoogleCalendarId, result.Event.EventId).ExecuteAsync();
-                    if (f.Flavor != gEvent.Summary
-                        || !IsSameDay(result.Date, gEvent.Start.Date))
-                    {
-                        modifyList.Add(f);
-                    }
+                    await InsertAsync(f);
                 }
-                else
+                else if ((await _flavor.GetFlavorOfTheDayAsync(f.Date)).Flavor != f.Flavor)
                 {
-                    addList.Add(f);
+                    await UpdateAsync(f, e.EventId);
                 }
             }
-
-            await InsertAsync(addList);
-            await UpdateAsync(modifyList);
         }
 
-        public async Task UpdateAsync(IEnumerable<FlavorOfTheDay> flavors)
+        private async Task InsertAsync(FlavorOfTheDay flavor)
         {
-            foreach (var f in flavors)
+            var response = await _calendar.Events
+                .Insert(CreateEvent(flavor), Constants.GoogleCalendarId)
+                .ExecuteAsync();
+
+            _logger.LogDebug($"Adding Google Calendar event {response.Id}");
+
+            flavor.Event = new CalendarEvent()
             {
-                var id = (await _event.GetCalendarEventAsync(f.Date)).EventId;
+                Date = flavor.Date,
+                EventId = response.Id,
+                FlavorOfTheDay = flavor
+            };
 
-                _logger.LogDebug($"Updating Google Calendar event {id}");
-
-                var e = await _calendar.Events.Get(Constants.GoogleCalendarId, id).ExecuteAsync();
-                e.Summary = f.Flavor;
-                e.Start.Date = FormatDate(f.Date);
-                e.End.Date = FormatDate(f.Date.AddDays(1));
-
-                var req = _calendar.Events.Update(e, Constants.GoogleCalendarId, id);
-                var response = await req.ExecuteAsync();
-
-                f.Event = new CalendarEvent
-                {
-                    Date = f.Date,
-                    EventId = response.Id,
-                    FlavorOfTheDay = f
-                };
-
-                await _flavor.ModifyFlavorOfTheDayAsync(f);
-            }
-
+            await _flavor.AddFlavorOfTheDayAsync(flavor);
         }
 
-        public async Task InsertAsync(IEnumerable<FlavorOfTheDay> flavors)
+        private async Task UpdateAsync(FlavorOfTheDay flavor, string e)
         {
-            foreach (var f in flavors)
-            {
-                var e = new Event();
+            var response = await _calendar.Events
+                .Update(CreateEvent(flavor), Constants.GoogleCalendarId, e)
+                .ExecuteAsync();
 
-                e.Start = new EventDateTime()
+            _logger.LogDebug($"Updating Google Calendar event {response.Id}");
+
+            flavor.Event = new CalendarEvent()
+            {
+                Date = flavor.Date,
+                EventId = e,
+                FlavorOfTheDay = flavor
+            };
+
+            await _flavor.ModifyFlavorOfTheDayAsync(flavor);
+        }
+
+        private static Event CreateEvent(FlavorOfTheDay f)
+        {
+            return new Event()
+            {
+                Start = new EventDateTime()
                 {
                     Date = FormatDate(f.Date)
-                };
-
-                e.End = new EventDateTime()
+                },
+                End = new EventDateTime()
                 {
                     Date = FormatDate(f.Date.AddDays(1))
-                };
-
-                e.Summary = f.Flavor;
-                e.Visibility = "public";
-                e.Transparency = "transparent";
-
-                var req = _calendar.Events.Insert(e, Constants.GoogleCalendarId);
-                var response = await req.ExecuteAsync();
-
-                _logger.LogDebug($"Adding Google Calendar event {response.Id}");
-
-                f.Event = new CalendarEvent()
-                {
-                    Date = f.Date,
-                    EventId = response.Id,
-                    FlavorOfTheDay = f
-                };
-
-                await _flavor.AddFlavorOfTheDayAsync(f);
-            }
+                },
+                Summary = f.Flavor,
+                Visibility = "public",
+                Transparency = "transparent"
+            };
         }
 
-        public static bool IsSameDay(DateTime a, string b)
-        {
-            var t = Convert.ToDateTime(b);
-            return a.Year == t.Year
-                && a.Month == t.Month
-                && a.Day == t.Day;
-        }
-
-        public static string FormatDate(DateTime date)
+        private static string FormatDate(DateTime date)
         {
             return $"{date:yyyy-MM-dd}";
         }
