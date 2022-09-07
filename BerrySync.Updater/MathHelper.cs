@@ -3,7 +3,7 @@ using SixLabors.ImageSharp.PixelFormats;
 
 namespace BerrySync.Updater
 {
-    public class MathHelper
+    public static class MathHelper
     {
         public static Rectangle GetCornerOffset(Image<L8> img)
         {
@@ -70,9 +70,9 @@ namespace BerrySync.Updater
 
         public static bool HasText(Image<Rgb24> img)
         {
-            for (int x = 0; x < img.Width / 2; x++)
+            for (int x = 5; x < img.Width / 2; x++)
             {
-                for (int y = 0; y < img.Height / 2; y++)
+                for (int y = 5; y < img.Height / 2; y++)
                 {
                     var pxl = img[x, y];
                     if ((pxl.G == 0 || pxl.R / pxl.G >= 2)
@@ -81,6 +81,24 @@ namespace BerrySync.Updater
                 }
             }
             return false;
+        }
+
+        public static int FindLBound(Image<Rgb24> img)
+        {
+            for (int x = (int)(img.Width * 0.6); x < img.Width; x++)
+            {
+                for (int y = (int)(img.Height * 0.1); y < img.Height; y++)
+                {
+                    var pxl = img[x, y];
+                    if (pxl.R < 64
+                        && pxl.G < 64
+                        && pxl.B < 64)
+                    {
+                        return x;
+                    }
+                }
+            }
+            return -1;
         }
     }
 }

@@ -17,11 +17,11 @@ namespace BerrySync.Updater.Services
         public async Task ProcessCalendar()
         {
             var dir = $"{Constants.WorkDir}/crop";
-            if (Directory.Exists(dir))
+            /**if (Directory.Exists(dir))
             {
                 Directory.Delete(dir, true);
             }
-            Directory.CreateDirectory(dir);
+            Directory.CreateDirectory(dir);**/
             
             Rectangle cornerOffset;
             Rectangle entry;
@@ -68,9 +68,8 @@ namespace BerrySync.Updater.Services
                                         i.Contrast(1.5f);
                                         i.Crop(new Rectangle(0, 0, top.Width, top.Height / 2));
                                     });
-                                    var path = $"{Constants.WorkDir}/crop/{7 * y + x}.jpg";
-                                    _logger.LogDebug($"Saving date to {path}");
-                                    await top.SaveAsJpegAsync(path);
+
+                                    await SaveDate(top, $"{7 * y + x}");
                                 }
 
                                 using (var bottom = date.Clone())
@@ -81,18 +80,41 @@ namespace BerrySync.Updater.Services
                                         i.Crop(new Rectangle(0, bottom.Height / 2, bottom.Width, bottom.Height / 2));
                                     });
 
-                                    if (MathHelper.HasText(bottom))
-                                    {
-                                        var path = $"{Constants.WorkDir}/crop/{x}b.jpg";
-                                        _logger.LogDebug($"Saving date to {path}");
-                                        await bottom.SaveAsJpegAsync(path);
-                                    }
+                                    await SaveDate(bottom, $"{x}b");
                                 }
                             }
                         }
                     }
 
                     yCoord = MathHelper.CalculateY(img.Height, cornerOffset.Height, entry.Height, offset.Height, ++y);
+                }
+            }
+        }
+
+        private static async Task SaveDate(Image<Rgb24> image, string baseFileName)
+        {
+            if (MathHelper.HasText(image))
+            {
+                var lBound = MathHelper.FindLBound(image) - 5;
+
+                using (var text = image.Clone())
+                {
+                    text.Mutate(i =>
+                    {
+                        i.Crop(new Rectangle(0, 0, lBound, text.Height));
+                    });
+
+                    await text.SaveAsJpegAsync($"{Constants.WorkDir}/crop/{baseFileName}-t.jpg");
+                }
+
+                using (var num = image.Clone())
+                {
+                    num.Mutate(i =>
+                    {
+                        i.Crop(new Rectangle(lBound, 0, num.Width - lBound, num.Height));
+                    });
+
+                    await num.SaveAsJpegAsync($"{Constants.WorkDir}/crop/{baseFileName}-n.jpg");
                 }
             }
         }
