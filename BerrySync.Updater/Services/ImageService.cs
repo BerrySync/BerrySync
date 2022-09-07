@@ -17,11 +17,11 @@ namespace BerrySync.Updater.Services
         public async Task ProcessCalendar()
         {
             var dir = $"{Constants.WorkDir}/crop";
-            if (Directory.Exists(dir))
+            /**if (Directory.Exists(dir))
             {
                 Directory.Delete(dir, true);
             }
-            Directory.CreateDirectory(dir);
+            Directory.CreateDirectory(dir);**/
             
             Rectangle cornerOffset;
             Rectangle entry;
