@@ -24,15 +24,18 @@ namespace BerrySync.Updater.Services
             {
                 var img = Image.FromFile(fileName);
                 var result = (await _vision.DetectTextAsync(img)).FirstOrDefault()?.Description.Replace('\n', ' ');
-                if (result is not null)
+                if (result is not null && !result.ToLower().Contains("closed"))
                 {
                     var date = Regex.Match(result, @"\d+").Value;
 
-                    days.Add(new FlavorOfTheDay
+                    if (!string.IsNullOrEmpty(date))
                     {
-                        Date = Convert.ToDateTime($"{month} {date}, {year}"),
-                        Flavor = result.Replace($" {date}", "")
-                    });
+                        days.Add(new FlavorOfTheDay
+                        {
+                            Date = Convert.ToDateTime($"{month} {date}, {year}"),
+                            Flavor = result.Replace($"{date}", "").Trim()
+                        });
+                    }
                 }
             }
 
