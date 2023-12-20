@@ -1,3 +1,6 @@
+# This project is now DEPRECATED.
+Goodberry's has revamped their calendar system to use Google Calendar directly rather than posting images. This project serves no longer serves any functional use.
+
 # BerrySync
 A program that syncs the Flavor of the Day calendar from [Goodberry's Flavor of the Day](https://www.goodberrys.com/flavor-of-the-day) with Google Calendar. It also includes a read-only API for finding information about flavors and the dates on which they occur. This project is still a WIP and more comprehensive documentation will be available in the future.
 
